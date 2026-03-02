@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from sqlmodel import SQLModel
 from app.core.database import engine
 from app.api.incidents import router
+from app.models.idempotency import IdempotencyKey
+from app.models.state_history import IncidentStateHistory
 
 app = FastAPI(title="Incident Triage System")
 
