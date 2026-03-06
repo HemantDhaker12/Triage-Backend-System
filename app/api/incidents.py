@@ -57,7 +57,8 @@ def create_incident(
         title=title,
         description=description,
         source=source,
-        dedup_hash=dedup_hash
+        dedup_hash=dedup_hash,
+        raw_payload=payload.dict()
     )
 
     session.add(incident)
@@ -75,6 +76,8 @@ def create_incident(
     })
     if source_type == "rule":
         metrics.rule_classifications += 1
+    elif source_type == "ai":
+        metrics.ai_classifications += 1
     else:
         metrics.fallback_classifications += 1
     incident.severity = severity
@@ -180,3 +183,72 @@ def update_state(
 @router.get("/metrics")
 def get_metrics():
     return metrics.as_dict()
+
+@router.post("/incidents/{incident_id}/replay", response_model=IncidentResponse)
+def replay_incident(
+    incident_id: UUID,
+    session: Session = Depends(get_session)
+):
+
+    incident = session.get(Incident, incident_id)
+
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    if not incident.raw_payload:
+        raise HTTPException(status_code=400, detail="No raw payload available")
+
+    payload = incident.raw_payload
+
+    # Re-run ingestion pipeline
+    new_incident = Incident(
+        title=payload["title"],
+        description=payload["description"],
+        source=payload["source"],
+        raw_payload=payload
+    )
+
+    session.add(new_incident)
+    session.commit()
+    session.refresh(new_incident)
+
+    return new_incident
+
+@router.post("/incidents/{incident_id}/override", response_model=IncidentResponse)
+def override_incident(
+    incident_id: UUID,
+    severity: str,
+    reason: str,
+    session: Session = Depends(get_session)
+):
+
+    incident = session.get(Incident, incident_id)
+
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    # Change severity
+    incident.severity = severity
+
+    # Validate state change
+    try:
+        validate_transition(incident.current_state, "OVERRIDDEN")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    history = IncidentStateHistory(
+        incident_id=incident.id,
+        from_state=incident.current_state,
+        to_state="OVERRIDDEN",
+        reason=reason
+    )
+
+    session.add(history)
+
+    incident.current_state = "OVERRIDDEN"
+
+    session.add(incident)
+    session.commit()
+    session.refresh(incident)
+
+    return incident

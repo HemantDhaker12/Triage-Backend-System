@@ -4,6 +4,8 @@ class Metrics:
         self.rule_classifications = 0
         self.fallback_classifications = 0
         self.auto_escalations = 0
+        self.ai_classifications = 0
+        self.ai_failures = 0
 
     def as_dict(self):
         return {
@@ -11,6 +13,8 @@ class Metrics:
             "rule_classifications": self.rule_classifications,
             "fallback_classifications": self.fallback_classifications,
             "auto_escalations": self.auto_escalations,
+            "ai_classifications": self.ai_classifications,
+            "ai_failures": self.ai_failures,
         }
 
 

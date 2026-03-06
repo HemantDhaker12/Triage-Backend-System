@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field
 from uuid import uuid4, UUID
 from datetime import datetime
-
+from sqlalchemy import Column, JSON
 
 class Incident(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
@@ -17,6 +17,11 @@ class Incident(SQLModel, table=True):
     current_state: str = "RECEIVED"
 
     dedup_hash: str | None = None
+
+    raw_payload: dict | None = Field(
+        default=None,
+        sa_column=Column(JSON)
+    )
 
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
