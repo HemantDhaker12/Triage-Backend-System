@@ -4,13 +4,17 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException
 from app.models.state_history import IncidentStateHistory
 from app.services.state_machine import validate_transition
+from app.services.classifier import classify_incident
+from app.models.state_history import IncidentStateHistory
+from app.services.state_machine import validate_transition
 from uuid import UUID
 from app.core.database import get_session
 from app.models.incident import Incident
 from app.models.idempotency import IdempotencyKey
 from app.utils.hashing import generate_dedup_hash
 from app.schemas.incident import IncidentCreate, IncidentResponse
-
+from app.services.audit import log_audit
+from app.core.metrics import metrics
 router = APIRouter()
 
 
@@ -23,7 +27,8 @@ def create_incident(
     title = payload.title
     description = payload.description
     source = payload.source
-
+    log_audit(session, None, "intake_received", payload.dict())
+    
     # 1️⃣ Idempotency Check
     if x_idempotency_key:
         existing_key = session.get(IdempotencyKey, x_idempotency_key)
@@ -42,8 +47,11 @@ def create_incident(
     existing_incident = session.exec(statement).first()
 
     if existing_incident:
+        log_audit(session, existing_incident.id, "dedup_hit", {
+        "hash": dedup_hash
+    })
+        session.commit()
         return existing_incident
-
     # 3️⃣ Create new incident
     incident = Incident(
         title=title,
@@ -52,6 +60,66 @@ def create_incident(
         dedup_hash=dedup_hash
     )
 
+    session.add(incident)
+    session.commit()
+    session.refresh(incident)
+    metrics.total_incidents += 1
+        # --- Classification ---
+    severity, confidence, source_type = classify_incident(
+        incident.title, incident.description
+    )
+    log_audit(session, incident.id, "classification_result", {
+        "severity": severity,
+        "confidence": confidence,
+        "source": source_type
+    })
+    if source_type == "rule":
+        metrics.rule_classifications += 1
+    else:
+        metrics.fallback_classifications += 1
+    incident.severity = severity
+    incident.confidence_score = confidence
+    incident.response_source = source_type
+
+    # --- Transition to CLASSIFIED ---
+    try:
+        validate_transition(incident.current_state, "CLASSIFIED")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    history = IncidentStateHistory(
+        incident_id=incident.id,
+        from_state=incident.current_state,
+        to_state="CLASSIFIED",
+        reason="automatic classification"
+    )
+
+    session.add(history)
+
+    incident.current_state = "CLASSIFIED"
+        # --- Auto Escalation ---
+    if incident.severity in ["HIGH", "CRITICAL"]:
+        try:
+            validate_transition(incident.current_state, "ESCALATED")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        escalation_history = IncidentStateHistory(
+            incident_id=incident.id,
+            from_state=incident.current_state,
+            to_state="ESCALATED",
+            reason="automatic escalation due to severity"
+        )
+        log_audit(session, incident.id, "auto_escalation", {
+        "severity": incident.severity
+        })
+        session.add(escalation_history)
+
+        incident.current_state = "ESCALATED"
+        session.add(incident)
+        session.commit()
+        session.refresh(incident)
+        metrics.auto_escalations += 1
     session.add(incident)
     session.commit()
     session.refresh(incident)
@@ -109,3 +177,6 @@ def update_state(
     session.refresh(incident)
 
     return incident
+@router.get("/metrics")
+def get_metrics():
+    return metrics.as_dict()
