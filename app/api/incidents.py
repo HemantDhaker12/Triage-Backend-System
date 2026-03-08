@@ -15,6 +15,8 @@ from app.utils.hashing import generate_dedup_hash
 from app.schemas.incident import IncidentCreate, IncidentResponse
 from app.services.audit import log_audit
 from app.core.metrics import metrics
+from app.services.notifier import send_notification
+import asyncio
 router = APIRouter()
 
 
@@ -101,6 +103,7 @@ def create_incident(
 
     incident.current_state = "CLASSIFIED"
         # --- Auto Escalation ---
+    # --- Auto Escalation ---
     if incident.severity in ["HIGH", "CRITICAL"]:
         try:
             validate_transition(incident.current_state, "ESCALATED")
@@ -113,20 +116,37 @@ def create_incident(
             to_state="ESCALATED",
             reason="automatic escalation due to severity"
         )
+
         log_audit(session, incident.id, "auto_escalation", {
-        "severity": incident.severity
+            "severity": incident.severity
         })
+
         session.add(escalation_history)
 
         incident.current_state = "ESCALATED"
+        incident.updated_at = datetime.utcnow()
+
+        metrics.auto_escalations += 1
+
+        # commit state change
         session.add(incident)
         session.commit()
         session.refresh(incident)
-        metrics.auto_escalations += 1
+
+        # send notification to n8n
+        notification_payload = {
+            "incident_id": str(incident.id),
+            "title": incident.title,
+            "severity": incident.severity,
+            "state": incident.current_state,
+            "source": incident.source
+        }
+
+        send_notification(notification_payload)
+        # Final DB commit
     session.add(incident)
     session.commit()
     session.refresh(incident)
-
     # 4️⃣ Store idempotency key
     if x_idempotency_key:
         idempotency_record = IdempotencyKey(
