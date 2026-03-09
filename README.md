@@ -175,35 +175,9 @@ The n8n workflow handles:
 ● potential integration with email or ticketing systems
 
 **Project Structure**
-                        app
-                        │
-                        ├── api
-                        │   └── incidents.py
-                        │
-                        ├── core
-                        │   ├── database.py
-                        │   └── metrics.py
-                        │
-                        ├── models
-                        │   ├── incident.py
-                        │   ├── audit.py
-                        │   ├── idempotency.py
-                        │   └── state_history.py
-                        │
-                        ├── schemas
-                        │   └── incident.py
-                        │
-                        ├── services
-                        │   ├── classifier.py
-                        │   ├── ai_classifier.py
-                        │   ├── ai_client.py
-                        │   ├── notifier.py
-                        │   └── state_machine.py
-                        │
-                        ├── utils
-                        │   └── hashing.py
-                        │
-                        └── main.py
+                <img width="344" height="684" alt="image" src="https://github.com/user-attachments/assets/d88b489b-7e0b-4234-8abe-62af44d202ab" />
+
+
 **Technology Stack**
 Backend:Python,FastAPI
 Database:SQLite,SQLModel / SQLAlchemy
