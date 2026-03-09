@@ -31,32 +31,8 @@ It provides:
 ● integration with automation tools for notification delivery
 
 **System Architecture**
-                External Monitoring Systems
-                        │
-                        ▼
-                      n8n Webhook
-                (Event Intake Layer)
-                        │
-                        ▼
-                FastAPI Incident Engine
-                        │
-                        ├── Idempotency Validation
-                        ├── Incident Deduplication
-                        ├── Rule-Based Classification
-                        ├── AI Classification Fallback
-                        ├── Confidence Guardrails
-                        ├── Incident State Machine
-                        ├── Escalation Logic
-                        └── Audit Logging
-                                │
-                                ▼
-                        Notification Trigger
-                                │
-                                ▼
-                               n8n
-                                │
-                                ▼
-                          Slack Alert Routing
+              <img width="488" height="1507" alt="mermaid-diagram" src="https://github.com/user-attachments/assets/7877dc3c-6941-42d3-acfc-127405f9d6f4" />
+
 
 The backend service acts as the decision layer, while n8n handles external orchestration and notification routing.
 
