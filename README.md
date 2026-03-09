@@ -1,289 +1,435 @@
-AI-Assisted Incident Triage Backend System
+<img width="1024" height="1536" alt="ChatGPT Image Mar 9, 2026, 10_14_27 PM" src="https://github.com/user-attachments/assets/2966fe75-bf39-4ceb-86e0-c6abb256923f" />**Incident Triage Backend System**
 
-An automated incident triage and escalation system built using FastAPI and n8n that intelligently classifies incoming incidents, enforces a strict lifecycle state machine, and routes alerts to Slack through an automation workflow.
+A backend service for automated incident classification, triage, and escalation designed for integration with monitoring pipelines and workflow automation tools.
 
-This system demonstrates how modern SRE / DevOps incident pipelines work in production environments.
+The system receives incident events, applies rule-based and AI-assisted classification, enforces a strict incident lifecycle, and routes alerts through an external automation layer.
 
-System Overview-
+This project demonstrates a production-style architecture for reliable incident processing and alert routing.
 
-Modern systems generate thousands of monitoring alerts. Without proper triage, engineers face:
+**Overview**
+Modern monitoring systems generate large volumes of alerts. Without structured triage, teams experience:
 
->alert fatigue
+● alert fatigue
+● duplicate incidents
+●inconsistent severity classification
+●lack of traceability in incident handling
 
->duplicate incidents
+This service acts as an incident decision engine between monitoring systems and notification channels.
 
->unclear prioritization
+It provides:
 
->missing audit trails
+● reliable ingestion of incident events
 
-This system solves that by creating an automated incident decision engine.
+● deterministic and AI-assisted classification
 
->Incoming events are processed through:
+● strict lifecycle state management
 
->Incident ingestion API
+● automated escalation of critical incidents
 
->Deduplication & idempotency checks
+● observable system metrics
 
->Rule-based classification
+● integration with automation tools for notification delivery
 
->AI-assisted classification fallback
+**System Architecture**
+                External Monitoring Systems
+                        │
+                        ▼
+                      n8n Webhook
+                (Event Intake Layer)
+                        │
+                        ▼
+                FastAPI Incident Engine
+                        │
+                        ├── Idempotency Validation
+                        ├── Incident Deduplication
+                        ├── Rule-Based Classification
+                        ├── AI Classification Fallback
+                        ├── Confidence Guardrails
+                        ├── Incident State Machine
+                        ├── Escalation Logic
+                        └── Audit Logging
+                                │
+                                ▼
+                        Notification Trigger
+                                │
+                                ▼
+                               n8n
+                                │
+                                ▼
+                          Slack Alert Routing
 
->Severity validation
+The backend service acts as the decision layer, while n8n handles external orchestration and notification routing.
 
->Incident lifecycle state machine
-
->Automatic escalation
-
->Notification routing via n8n
-
->Slack alerts
-
->Architecture
-
-Architecture
-
-External Monitoring Systems
-        │
-        ▼
-      n8n Webhook
- (Event Intake Layer)
-        │
-        ▼
-FastAPI Incident Engine
-        │
-        ├── Idempotency Check
-        ├── Deduplication (Hash + Time Window)
-        ├── Rule Engine
-        ├── AI Classification
-        ├── Confidence Guardrails
-        ├── Incident State Machine
-        ├── Escalation Logic
-        └── Audit Logging
-                │
-                ▼
-         Notification Trigger
-                │
-                ▼
-               n8n
-                │
-                ▼
-          Slack Alert Routing
-
-System Flow:
-
+**System Flow**
 1. Monitoring system detects anomaly
-2. Event sent to n8n webhook
-3. n8n forwards payload to backend API
-4. Backend validates payload
-5. Deduplication + idempotency checks
-6. Rule engine attempts classification
-7. If rules fail → AI classifier
-8. Severity determined
-9. Incident state transitions applied
-10. High severity incidents escalated
-11. Backend triggers notification webhook
-12. n8n routes alert to Slack channels
+2. Event is forwarded to the backend API
+3. Incident payload is validated and stored
+4. Deduplication prevents duplicate incidents
+5. Rule engine attempts severity classification
+6. If rules do not match → AI classifier is used
+7. Confidence guardrail validates AI output
+8. Incident state transitions are applied
+9. High severity incidents trigger escalation
+10. Backend emits notification webhook
+11. n8n routes alerts to Slack
 
-Tech Stack
+**Core Design Principles**
+Deterministic First, AI Second
 
-Backend:
-
->FastAPI
-
->Python
-
-Database:
-
->SQLite
-
->SQLModel / SQLAlchemy
-
-Automation:
-
->n8n workflow engine
-
-Notifications:
-
->Slack API
-
-Server:
-
->Uvicorn
-
-Key Features
-Incident Ingestion
-
-POST /incidents
-
-Accepts monitoring events and stores them as incidents.
-
-Supports:
-
-idempotency keys
-
-payload validation
-
-raw payload storage
-
-Deduplication
-
-Incidents are deduplicated using:
-
-SHA256 hash of incident content
-+ time window validation
-
-Prevents duplicate alerts.
-
-                Classification Pipeline
+Classification follows a strict order:
+                
                 Rule Engine
-                    ↓
+                     ↓
                 AI Classifier
-                    ↓
-                Confidence Guardrail
-                    ↓
+                     ↓
                 Fallback Severity
 
-Ensures AI never breaks the system.
+AI is never allowed to break the system.
 
-Incident State Machine
+**Idempotent Incident Ingestion**
 
-The system enforces strict lifecycle transitions.
+Duplicate requests are prevented using an idempotency key.
+
+POST /incidents
+Header: X-Idempotency-Key
+
+Repeated requests return the same incident record.
+
+**Incident Deduplication**
+
+Incidents are deduplicated using a content hash combined with a time window.
+
+hash(title + description + source)
+
+This prevents alert storms from repeated monitoring events.
+
+**Incident Lifecycle State Machine**
+
+The system enforces strict state transitions.
 
                 RECEIVED
-                ↓
+                   ↓
                 CLASSIFIED
-                ↓
+                   ↓
                 ESCALATED
-                ↓
+                   ↓
                 ACKNOWLEDGED
-                ↓
+                   ↓
                 RESOLVED
-                ↓
+                   ↓
                 OVERRIDDEN
 
 Invalid transitions are rejected.
 
-Automatic Escalation
+**Automatic Escalation**
 
-Incidents with severity:
+Incidents classified as:
 
 HIGH
 CRITICAL
 
-are automatically escalated and trigger notifications.
+are automatically escalated and trigger external notifications.
 
-Human Override
+**API Endpoints**
+Create Incident
+POST /incidents
 
+Example request:
+
+{
+  "title": "Database outage",
+  "description": "Primary database unreachable",
+  "source": "monitoring"
+}
+**Get Incidents**
+GET /incidents
+
+Returns all recorded incidents.
+
+**Incident State Transition**
+PATCH /incidents/{id}/state
+
+Moves an incident to a new lifecycle state.
+
+**Human Override**
 POST /incidents/{id}/override
 
-Allows engineers to override AI decisions.
+Allows operators to override automated classification.
 
-Replay Capability
+**Replay Incident**
 POST /incidents/{id}/replay
 
-Reprocesses stored incidents using original payload.
+Reprocesses the original incident payload.
 
-Useful for debugging and testing new classification logic.
+Useful for debugging or evaluating improved classification logic.
 
-Audit Logging
-
-Every decision is recorded:
-
-classification
-
-escalation
-
-overrides
-
-state transitions
-
-Ensures full traceability.
-
-Metrics & Observability
+**Metrics**
 GET /metrics
 
-Example output:
+Example response:
 
 {
   "total_incidents": 12,
-  "rule_classifications": 5,
+  "rule_classifications": 6,
   "ai_classifications": 4,
-  "fallback_classifications": 3,
-  "auto_escalations": 2,
+  "fallback_classifications": 2,
+  "auto_escalations": 3,
   "ai_failures": 0
 }
-Health Check
+
+Provides observability into system behavior.
+
+**Health Check**
 GET /health
 
-Used for monitoring service availability.
+Used for service monitoring.
 
-Project Structure
-            Triage-Backend-System
-                    │
-                    ├── app
-                    │   ├── api
-                    │   │   └── incidents.py
-                    │   │
-                    │   ├── core
-                    │   │   ├── database.py
-                    │   │   └── metrics.py
-                    │   │
-                    │   ├── models
-                    │   │   ├── incident.py
-                    │   │   ├── audit.py
-                    │   │   ├── idempotency.py
-                    │   │   └── state_history.py
-                    │   │
-                    │   ├── schemas
-                    │   │   └── incident.py
-                    │   │
-                    │   ├── services
-                    │   │   ├── classifier.py
-                    │   │   ├── ai_classifier.py
-                    │   │   ├── ai_client.py
-                    │   │   ├── notifier.py
-                    │   │   └── state_machine.py
-                    │   │
-                    │   ├── utils
-                    │   │   └── hashing.py
-                    │   │
-                    │   └── main.py
-                    │
-                    ├── migrations
-                    ├── incident.db
-                    └── .gitignore
+**Notification Pipeline**
 
-Example API Usage
+The backend does not send notifications directly. Instead it emits a webhook event.
 
-Create Incident
+Backend → n8n → Slack
 
-POST /incidents
-{
-  "title": "Database outage",
-  "description": "Primary DB unreachable",
-  "source": "monitoring"
-}
-Slack Alert Example
-🚨 CRITICAL INCIDENT
+The n8n workflow handles:
 
-Title: Database outage
-Severity: CRITICAL
-Source: monitoring
-Incident ID: 12345
-Author
+● severity-based routing
+
+● Slack alerts
+
+● potential integration with email or ticketing systems
+
+**Project Structure**
+                        app
+                        │
+                        ├── api
+                        │   └── incidents.py
+                        │
+                        ├── core
+                        │   ├── database.py
+                        │   └── metrics.py
+                        │
+                        ├── models
+                        │   ├── incident.py
+                        │   ├── audit.py
+                        │   ├── idempotency.py
+                        │   └── state_history.py
+                        │
+                        ├── schemas
+                        │   └── incident.py
+                        │
+                        ├── services
+                        │   ├── classifier.py
+                        │   ├── ai_classifier.py
+                        │   ├── ai_client.py
+                        │   ├── notifier.py
+                        │   └── state_machine.py
+                        │
+                        ├── utils
+                        │   └── hashing.py
+                        │
+                        └── main.py
+**Technology Stack**
+Backend:Python,FastAPI
+Database:SQLite,SQLModel / SQLAlchemy
+Automation:n8n
+Notifications:Slack API
+Server:Uvicorn
+
+**Running the Project**
+
+Clone the repository:
+
+git clone <repo-url>
+cd Triage-Backend-System
+
+Create virtual environment:
+
+python -m venv venv
+source venv/bin/activate
+
+Install dependencies:
+
+pip install -r requirements.txt
+
+Run server:
+
+uvicorn app.main:app --reload
+
+Open API documentation:
+
+http://localhost:8000/docs
+
+**Engineering Decisions**
+
+This project prioritizes reliability, deterministic behavior, and clear system boundaries.
+
+FastAPI for the Backend
+
+FastAPI was chosen for:
+
+● high performance asynchronous request handling
+
+● strong request validation via Pydantic
+
+● automatic OpenAPI documentation
+
+● suitability for microservice-style APIs
+
+SQLite for Local Persistence
+
+SQLite was used during development because:
+
+● it requires no external infrastructure
+
+● it simplifies local testing
+
+● it allows fast iteration
+
+The data layer is implemented using SQLModel / SQLAlchemy, allowing the system to migrate easily to PostgreSQL in production environments.
+
+**Separation of Concerns**
+
+The backend is intentionally designed as a decision engine, while automation and notification routing are handled externally.
+
+Responsibilities are divided as follows:
+
+Backend service:
+
+incident ingestion
+classification
+state machine enforcement
+escalation logic
+audit logging
+metrics
+
+Automation layer (n8n):
+
+alert routing
+Slack notifications
+workflow orchestration
+external integrations
+
+This separation keeps the backend deterministic and testable.
+
+**AI as an Assistive Layer**
+
+AI classification is intentionally not the primary decision system.
+
+The classification pipeline is:
+
+                Rule Engine
+                     ↓
+                AI Classification
+                     ↓
+                Fallback Severity
+
+Rules handle known conditions deterministically, while AI assists with ambiguous cases.
+
+A confidence guardrail ensures low-confidence predictions default to a safe severity level.
+
+**Failure Handling Strategy**
+
+The system is designed to avoid cascading failures when external systems or AI components behave unpredictably.
+
+AI Failure Handling
+
+If the AI classifier fails:
+
+severity = MEDIUM
+response_source = fallback
+
+This ensures the system remains operational even when AI is unavailable.
+
+**Idempotent Event Processing**
+
+Incoming requests support idempotency keys.
+
+This ensures repeated ingestion attempts do not create duplicate incidents.
+
+**Deduplication Window**
+
+Repeated monitoring events are deduplicated using a hash-based detection mechanism combined with a time window.
+
+This prevents alert storms when monitoring systems repeatedly emit the same event.
+
+**External Notification Failures**
+
+Notification delivery is delegated to n8n, allowing retries and routing logic to be handled outside the backend service.
+
+The backend therefore remains stateless with respect to notification delivery.
+
+**Future Improvements**
+
+The current implementation focuses on the core incident triage pipeline.
+
+Potential improvements include:
+
+Production Database
+
+Replace SQLite with PostgreSQL for:
+
+● concurrency
+
+● durability
+
+● horizontal scalability
+
+**Incident Timeline API**
+
+Expose a dedicated endpoint:
+
+GET /incidents/{id}/timeline
+
+This would provide a full chronological view of incident lifecycle events.
+
+**Rate Limiting**
+
+Protect ingestion endpoints from event floods using rate limiting or event queue buffering.
+
+**Alert Deduplication for Notifications**
+
+Extend the deduplication system to suppress repeated notifications for the same incident.
+
+**Additional Notification Integrations**
+
+Future integrations could include:
+
+● PagerDuty
+
+● Opsgenie
+
+● Email notifications
+
+● ticketing systems
+
+**Observability Improvements**
+
+Export metrics to systems such as:
+
+Prometheus
+
+Grafana
+
+for long-term operational monitoring.
+**●Engineering Goals**
+
+This project focuses on:
+
+● reliable event ingestion
+
+● safe integration of AI classification
+
+● deterministic system behavior
+
+● observable incident processing
+
+● automation-first architecture
+
+The goal is to demonstrate how incident triage systems used by SRE teams can be designed as reliable backend services.
+
+**Author**
 
 Hemant Dhaker
 
-Project Goal
 
-This project demonstrates how AI-assisted incident automation systems used by SRE teams can be designed using modern backend architectures.
 
-The system emphasizes:
-
-reliability
-
-automation
-
-observability
-
-safety around AI decision making
