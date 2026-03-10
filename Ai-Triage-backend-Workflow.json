@@ -1,0 +1,515 @@
+{
+  "name": "Ai-Triage-backend-Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "incident-alert",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -480,
+        -32
+      ],
+      "id": "5e417340-2d71-4ee4-9441-fbb07d830335",
+      "name": "Webhook",
+      "webhookId": "217e2dad-ff39-4ec0-8dc9-d10213273a47"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json['severity '] }}",
+                    "rightValue": "=CRITICAL",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "95815c0a-2ab0-44ec-a446-c26389759bc7"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a17d7775-59a8-4477-a0a9-f1fa94132524",
+                    "leftValue": "={{ $json['severity '] }}",
+                    "rightValue": "=HIGH",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c0933f51-bbec-4991-9b60-1a28c0267901",
+                    "leftValue": "={{ $json['severity '] }}",
+                    "rightValue": "=MEDIUM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8703687e-4adf-4080-9a3f-b927b512fb82",
+                    "leftValue": "={{ $json['severity '] }}",
+                    "rightValue": "=LOW",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -64,
+        -32
+      ],
+      "id": "85d416ae-c823-4163-9401-ae7d04931dd5",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a5d98da3-b8f5-4d88-a124-39ab9561481e",
+              "name": "incident_id",
+              "value": "={{$json[\"body\"][\"incident_id\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "49c83ff1-e4f7-486a-92c2-4d7f386598c4",
+              "name": "title",
+              "value": "={{$json[\"body\"][\"title\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "b6d6b0df-5f9b-4fee-bc3f-04d8fed633ac",
+              "name": "severity ",
+              "value": "={{$json[\"body\"][\"severity\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "e1aabd3e-7799-4159-8025-622235874c62",
+              "name": "state ",
+              "value": "={{$json[\"body\"][\"state\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "b7061cd4-d390-4e35-a135-26fb36e7c213",
+              "name": "source",
+              "value": "={{$json[\"body\"][\"source\"]}}",
+              "type": "string"
+            },
+            {
+              "id": "676c89cf-86d8-41f5-9c1c-d9ae0379611b",
+              "name": "timestamp ",
+              "value": "={{$now}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -272,
+        -32
+      ],
+      "id": "7f9b9550-4a88-424f-8664-f27eb780347e",
+      "name": "set"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AJSGF7HB9",
+          "mode": "list",
+          "cachedResultName": "critical-alerts"
+        },
+        "text": "=🚨 CRITICAL INCIDENT  Title: {{$json[\"title\"]}} \nSeverity: {{ $json['severity '] }} \nSource: {{$json[\"source\"]}}  \nIncident ID: {{$json[\"incident_id\"]}}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        144,
+        -240
+      ],
+      "id": "8b417df9-e647-4701-829e-3a1c438f4301",
+      "name": "Critical Slack",
+      "webhookId": "9501a5bf-a078-48c8-ab56-19d0f7ed7ccc",
+      "credentials": {
+        "slackApi": {
+          "id": "id",
+          "name": "Slack account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0AK1J6KDEX",
+          "mode": "list",
+          "cachedResultName": "high-alerts"
+        },
+        "text": "=⚠️ HIGH INCIDENT  Title: {{$json[\"title\"]}} \nSource: {{$json[\"source\"]}} \nIncident ID: {{$json[\"incident_id\"]}}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        336,
+        -128
+      ],
+      "id": "73d45e0f-19bc-4dce-ba1d-27458252eeef",
+      "name": "High Slack",
+      "webhookId": "e456f737-9244-4a69-af1d-525f7a730e36",
+      "credentials": {
+        "slackApi": {
+          "id": "id",
+          "name": "Slack account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1YOMlwNN4swVuAud0n9wc_npnmo7i7HpO66v-1G5LXX4",
+          "mode": "list",
+          "cachedResultName": "Medium-alert",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Medium",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "incident_id": "={{ $('set').item.json.incident_id }}",
+            "title": "={{ $('set').item.json.title }}",
+            "severity": "={{ $('set').item.json['severity '] }}",
+            "state": "={{ $('set').item.json['state '] }}",
+            "source": "={{ $('set').item.json.source }}",
+            "timestamp": "={{ $('set').item.json['timestamp '] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "incident_id",
+              "displayName": "incident_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "severity",
+              "displayName": "severity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "state",
+              "displayName": "state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        432,
+        64
+      ],
+      "id": "0ca85aa8-b6b1-4450-8f1f-d47737643a88",
+      "name": "Medium-alert",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "sVtkIpEX0i2E4kmP",
+          "name": "Google Sheets account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1YOMlwNN4swVuAud0n9wc_npnmo7i7HpO66v-1G5LXX4",
+          "mode": "list",
+          "cachedResultName": "Medium-low-alert",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 884489305,
+          "mode": "list",
+          "cachedResultName": "Low",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "incident_id": "={{ $('set').item.json.incident_id }}",
+            "title": "={{ $('set').item.json.title }}",
+            "severity": "={{ $('set').item.json['severity '] }}",
+            "state": "={{ $('set').item.json['state '] }}",
+            "source": "={{ $('set').item.json.source }}",
+            "timestamp": "={{ $('set').item.json['timestamp '] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "incident_id",
+              "displayName": "incident_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "severity",
+              "displayName": "severity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "state",
+              "displayName": "state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        304,
+        240
+      ],
+      "id": "cce0f076-139c-4c32-b513-8e8ce0be133c",
+      "name": "Low-alert",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "sVtkIpEX0i2E4kmP",
+          "name": "Google Sheets account 4"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Critical Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "High Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Medium-alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Low-alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "25d92e61-8322-47ac-b070-0c642bc03b81",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b061d72d45eb1a73b3dc1aeb38670a9a6f0182b35051df24d19bf86c7aeebcdb"
+  },
+  "id": "Mdntc0no6y7BKlo5",
+  "tags": []
+}
